@@ -10,7 +10,6 @@ from sklearn.preprocessing import StandardScaler
 from scipy import stats
 warnings.filterwarnings("ignore")
 plt.show()
-
 """
 this will load in the files to train the program, to test the program
 and to have a look at some basic mathematical information about the SalePrice
@@ -26,29 +25,25 @@ trainID = train["Id"]
 testID = test["Id"]
 train.drop("Id", axis = 1, inplace = True)
 test.drop("Id", axis = 1, inplace = True)
-
+"""
 # graph to look for SalePrice distribution, skewness and its peak value
 sns.distplot(train['SalePrice'])
 print(f"Skewness of graph: {train['SalePrice'].skew()}")
 print(f"Kurtosis (peak) of graph: {train['SalePrice'].kurt()}")
-
 # scatter plot of grlivarea/saleprice
 var = 'GrLivArea'
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
 data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000))
-
 # scatter plot of totalbsmtsf/saleprice
 var = 'TotalBsmtSF'
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
 data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000))
-
 # box plot of overallqual/saleprice
 var = 'OverallQual'
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
 f, ax = plt.subplots(figsize=(8, 6))
 fig = sns.boxplot(x=var, y="SalePrice", data=data)
 fig.axis(ymin=0, ymax=800000)
-
 # box plot of YearBuilt/SalePrice
 var = 'YearBuilt'
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
@@ -59,8 +54,17 @@ plt.xticks(rotation=90)
 
 # correlation matrix of all attributes
 corrmat = train.corr()
+f, ax = plt.subplots(figsize=(12, 9))
 plt.subplots(figsize=(12, 9))
 sns.heatmap(corrmat, vmax=.9, square=True)
+plt.show()
+
+# saleprice correlation matrix
+n = 20 #number of variables for heatmap
+columns = corrmat.nlargest(n, 'SalePrice')['SalePrice'].index
+cm = np.corrcoef(train[columns].values.T)
+sns.set(font_scale=0.85)
+hm = sns.heatmap(cm, cbar=True, annot=True, square=True, fmt='.2f', annot_kws={'size': 10}, yticklabels=columns.values, xticklabels=columns.values)
 plt.show()
 
 # scatterplot
@@ -69,84 +73,89 @@ columns = ['SalePrice', 'OverallQual', 'GrLivArea', 'GarageCars', 'TotalBsmtSF',
 sns.pairplot(train[columns], size = 2.5)
 plt.show()
 
+# finding missing data within the data set
+total = train.isnull().sum().sort_values(ascending=False)
+percent = (train.isnull().sum()/train.isnull().count()).sort_values(ascending=False)
+missing_data = pd.concat([total, percent], axis=1, keys=['Total', 'Percent'])
+missing_data.head(20)
+
 # dealing with the missing data to allow for better prediction of SalePrice
+train = train.drop((missing_data[missing_data['Total'] > 1]).index,1)
 train = train.drop(train.loc[train['Electrical'].isnull()].index)
+train.isnull().sum().max() #just checking that there's no missing data missing..
 
 # standardizing the data so that we can predict the data much more accurately
 saleprice_scaled = StandardScaler().fit_transform(train['SalePrice'][:,np.newaxis])
-low_range = saleprice_scaled[saleprice_scaled[:,0].argsort()][:10]
-high_range= saleprice_scaled[saleprice_scaled[:,0].argsort()][-10:]
-print('outer range (low) of the distribution:')
-print(low_range)
-print('\nouter range (high) of the distribution:')
-print(high_range)
-
-# bivariate analysis of saleprice/grlivarea
-var = 'GrLivArea'
+@@ -95,11 +86,6 @@
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
 data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000))
+
+# deleting points that are outliers in the data
+train.sort_values(by = 'GrLivArea', ascending = False)[:2]
+train = train.drop(train[train['Id'] == 1299].index)
+train = train.drop(train[train['Id'] == 524].index)
 
 # bivariate analysis of saleprice/grlivarea
 var = 'TotalBsmtSF'
 data = pd.concat([train['SalePrice'], train[var]], axis=1)
 data.plot.scatter(x=var, y='SalePrice', ylim=(0,800000))
-
 # histogram and normal probability plot of SalePrice
 sns.distplot(train['SalePrice'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train['SalePrice'], plot=plt)
 plt.show()
-
 # applying log transformation
 train['SalePrice'] = np.log(train['SalePrice'])
-
 # transformed histogram and normal probability plot
 sns.distplot(train['SalePrice'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train['SalePrice'], plot=plt)
 plt.show()
-
 # histogram and normal probability plot
 sns.distplot(train['GrLivArea'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train['GrLivArea'], plot=plt)
 plt.show()
-
 # data transformation
 train['GrLivArea'] = np.log(train['GrLivArea'])
-
 # transformed histogram and normal probability plot
 sns.distplot(train['GrLivArea'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train['GrLivArea'], plot=plt)
-
 # histogram and normal probability plot
 sns.distplot(train['TotalBsmtSF'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train['TotalBsmtSF'], plot=plt)
-
+"""
+#create column for new variable (one is enough because it's a binary categorical feature)
+#if area>0 it gets 1, for area==0 it gets 0
 # create column for new variable (one is enough because it's a binary categorical feature)
 # if area>0 it gets 1, for area==0 it gets 0
 train['HasBsmt'] = pd.Series(len(train['TotalBsmtSF']), index=train.index)
 train['HasBsmt'] = 0 
 train.loc[train['TotalBsmtSF']>0,'HasBsmt'] = 1
-
+"""
+#transform data
 # transform data
 train.loc[train['HasBsmt']==1,'TotalBsmtSF'] = np.log(train['TotalBsmtSF'])
 
+#histogram and normal probability plot
 # histogram and normal probability plot
 sns.distplot(train[train['TotalBsmtSF']>0]['TotalBsmtSF'], fit=norm)
 fig = plt.figure()
 res = stats.probplot(train[train['TotalBsmtSF']>0]['TotalBsmtSF'], plot=plt)
 
+#scatter plot
 # scatter plots
 plt.scatter(train['GrLivArea'], train['SalePrice'])
+
+#scatter plot
 plt.scatter(train[train['TotalBsmtSF']>0]['TotalBsmtSF'], train[train['TotalBsmtSF']>0]['SalePrice']);
+"""
+#convert categorical variable into dummy
+train = pd.get_dummies(train)
 
 # concatenating both training and test data into one dataframe and removing SalePrice
-ntrain = train.shape[0]
-ntest = test.shape[0]
-ytrain = train.SalePrice.values
 allData = pd.concat((train, test)).reset_index(drop = True)
 allData.drop(["SalePrice"], axis = 1,inplace = True)
 
@@ -157,8 +166,8 @@ allData["PoolQC"] = allData["PoolQC"].fillna("None")
 allData["Fence"] = allData["Fence"].fillna("None")
 allData["MiscFeature"] = allData["MiscFeature"].fillna("None")
 allData["Alley"] = allData["Alley"].fillna("None")
-allData["LotFrontage"] = allData.groupby("Neighborhood")["LotFrontage"].transform(
-    lambda x: x.fillna(x.median()))
+#allData["LotFrontage"] = allData.groupby("Neighborhood")["LotFrontage"].transform(
+    #lambda x: x.fillna(x.median()))
 for i in ("GarageType", "GarageFinish", "GarageQual", "GarageCond"):
     allData[i] = allData[i].fillna('None')
 for i in ("GarageYrBlt", "GarageArea", "GarageCars"):
@@ -217,45 +226,35 @@ targetVar = train["SalePrice"]
 
 # getting dummy categorical features
 allData = pd.get_dummies(allData)
-train = allData[:ntrain]
-test = allData[ntrain:]
 
 # normalising the data
 features = list(set(list(allData.columns)) - set(targetVar))
-allData[features] = allData[features] / allData[features].max()
+allData[features] = allData[features] / allData[features].max() # <---- current error
 
 # creating a validation set
 from sklearn.model_selection import train_test_split
 x = train[features].values
-y = train[targetVar].values # <-- code currently works correctly up to this point
-
+y = train[targetVar].values
 x_train, x_valid, y_train, y_valid = train_test_split(x, y, test_size = 0.3, random_state = 42)
 
 # building a model using Random Forest
 import random
 import keras
-from sklearn.ensemble import RandomForestRegressor
-random.seed(42)
-rf = RandomForestRegressor(n_estimators = 10)
-rf.fit(x_train, y_train)
 
 # defining the model for the deep learning model
 model = Sequential()
 model.add(Dense(100, input_dim = 79, activation = "relu"))
-model.add(Dense(50, activation = "relu"))
 model.add(Dense(1))
 model.summary()
 
 # compile the model
 model.compile(loss = "mean_squared_error", optimizer = "adam", metrics = ["mean_squared_error"])
 
-# fit model
-model.fit(x_train, y_train, epochs=10)
-
-from sklearn.metrics import mean_squared_error
-pred =rf.predict(X_valid)
-score = np.sqrt(mean_squared_error(y_valid,pred))
+# evaluation
+pred = model.predict(x_valid)
+score = np.sqrt(mean_squared_error(y_valid, pred))
 print(score)
 
-# evaluation while fitting the model
-model.fit(x_train, y_train, epochs=10, validation_data=(x_valid, y_valid))
+#prediction
+x_test = test[features].values
+y_test = model.predict(x_test)
